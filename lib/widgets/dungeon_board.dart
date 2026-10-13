@@ -4,16 +4,20 @@ import '../models/dungeon_level.dart';
 import '../models/dungeon_tile.dart';
 import '../models/grid_position.dart';
 import '../models/player_state.dart';
+import '../models/visualization_state.dart';
 
-/// Responsive grid board displaying the labyrinth tiles, obstacles, and player.
+/// Responsive grid board displaying the labyrinth tiles, obstacles, player,
+/// and optional Algorithm Vision exploration overlays.
 class DungeonBoard extends StatelessWidget {
   final DungeonLevel level;
   final PlayerState playerState;
+  final VisualizationState? visualizationState;
 
   const DungeonBoard({
     super.key,
     required this.level,
     required this.playerState,
+    this.visualizationState,
   });
 
   @override
@@ -55,12 +59,27 @@ class DungeonBoard extends StatelessWidget {
                         'item_${r}_$c',
                       );
 
+                      final isFrontier =
+                          visualizationState?.frontierNodes.contains(pos) ??
+                          false;
+                      final isSettled =
+                          visualizationState?.settledNodes.contains(pos) ??
+                          false;
+                      final isFinalPath =
+                          visualizationState?.finalPath.contains(pos) ?? false;
+                      final cellDistance =
+                          visualizationState?.nodeDistances[pos];
+
                       return Expanded(
                         child: _buildTileCell(
                           pos: pos,
                           tile: tile,
                           isPlayerHere: isPlayerHere,
                           isCollected: isCollected,
+                          isFrontier: isFrontier,
+                          isSettled: isSettled,
+                          isFinalPath: isFinalPath,
+                          cellDistance: cellDistance,
                         ),
                       );
                     }),
@@ -79,6 +98,10 @@ class DungeonBoard extends StatelessWidget {
     required DungeonTile tile,
     required bool isPlayerHere,
     required bool isCollected,
+    required bool isFrontier,
+    required bool isSettled,
+    required bool isFinalPath,
+    required int? cellDistance,
   }) {
     Color backgroundColor;
     Widget? terrainContent;
@@ -131,6 +154,27 @@ class DungeonBoard extends StatelessWidget {
         break;
     }
 
+    // Border and overlay styling for Algorithm Vision
+    Color borderColor = const Color(0xFFE2E8F0);
+    double borderWidth = 0.5;
+    Color overlayColor = Colors.transparent;
+
+    if (tile.type != TileType.wall) {
+      if (isFinalPath) {
+        borderColor = const Color(0xFF3867D6);
+        borderWidth = 2.0;
+        overlayColor = const Color(0x3D3867D6); // 24% blue tint
+      } else if (isSettled) {
+        borderColor = const Color(0xFF818CF8);
+        borderWidth = 1.0;
+        overlayColor = const Color(0x266366F1); // 15% indigo tint
+      } else if (isFrontier) {
+        borderColor = const Color(0xFFF59E0B);
+        borderWidth = 1.5;
+        overlayColor = const Color(0x2EF59E0B); // 18% amber tint
+      }
+    }
+
     // Optional uncollected items
     Widget? itemIcon;
     if (!isCollected) {
@@ -152,13 +196,70 @@ class DungeonBoard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 0.5),
+        border: Border.all(color: borderColor, width: borderWidth),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // Base terrain content
           ?terrainContent,
+
+          // Algorithm Vision overlay tint
+          if (overlayColor != Colors.transparent)
+            Container(color: overlayColor),
+
+          // Distance badge for explored nodes
+          if (cellDistance != null &&
+              (isSettled || isFrontier) &&
+              tile.type != TileType.wall)
+            Positioned(
+              top: 1,
+              left: 2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 2.5,
+                  vertical: 0.5,
+                ),
+                decoration: BoxDecoration(
+                  color: isSettled
+                      ? const Color(0xFF4F46E5)
+                      : const Color(0xFFD97706),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  '$cellDistance',
+                  style: const TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ),
+
+          // Final path route indicator (when not occupied by player or exit)
+          if (isFinalPath && !isPlayerHere && tile.type != TileType.exit)
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: Color(0xFF3867D6),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x663867D6),
+                    blurRadius: 3,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+
+          // Item icon
           ?itemIcon,
+
+          // Player icon
           if (isPlayerHere)
             Container(
               width: 26,

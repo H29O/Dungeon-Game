@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../data/sample_levels.dart';
 import '../game/game_controller.dart';
+import '../widgets/algorithm_vision_panel.dart';
 import '../widgets/dungeon_board.dart';
 import '../widgets/movement_controls.dart';
 
-/// Complete, playable dungeon exploration screen for Phase 2.
+/// Complete, playable dungeon exploration screen with integrated
+/// Algorithm Vision for Dijkstra shortest-path observation.
 class DungeonScreen extends StatefulWidget {
   final GameController? controller;
 
@@ -94,20 +96,57 @@ class _DungeonScreenState extends State<DungeonScreen> {
                   else if (_controller.lastRejectionReason != null)
                     _buildRejectionBanner(),
                   const SizedBox(height: 8),
-                  DungeonBoard(
-                    level: _controller.level,
-                    playerState: _controller.playerState,
+
+                  // Dungeon Board with optional Algorithm Vision overlays
+                  ListenableBuilder(
+                    listenable: _controller.visualizationController,
+                    builder: (context, _) {
+                      return DungeonBoard(
+                        level: _controller.level,
+                        playerState: _controller.playerState,
+                        visualizationState:
+                            _controller.visualizationController.state,
+                      );
+                    },
                   ),
                   const SizedBox(height: 8),
-                  _buildLegend(),
-                  const SizedBox(height: 12),
-                  MovementControls(controller: _controller),
+
+                  // Interactive controls: Algorithm Vision panel or manual controls
+                  if (_controller.isShowingAlgorithm)
+                    AlgorithmVisionPanel(controller: _controller)
+                  else ...[
+                    _buildLegend(),
+                    const SizedBox(height: 8),
+                    _buildVisionLaunchButton(),
+                    const SizedBox(height: 8),
+                    MovementControls(controller: _controller),
+                  ],
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildVisionLaunchButton() {
+    final canLaunch =
+        !_controller.isWon && !_controller.isLost && !_controller.isPaused;
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.visibility_rounded, size: 18),
+        label: const Text('Algorithm Vision'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          side: const BorderSide(color: Color(0xFF3867D6), width: 1.5),
+          foregroundColor: const Color(0xFF3867D6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: canLaunch ? () => _controller.startAlgorithmVision() : null,
+      ),
     );
   }
 

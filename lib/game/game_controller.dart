@@ -1,19 +1,32 @@
 import 'package:flutter/foundation.dart';
 
+import '../algorithms/dijkstra.dart';
 import '../models/dungeon_level.dart';
 import '../models/dungeon_tile.dart';
 import '../models/grid_position.dart';
 import '../models/player_state.dart';
 import 'direction.dart';
+import 'visualization_controller.dart';
 
-/// Single authority managing gameplay state and transactions for a dungeon run.
+/// Single authority managing gameplay state, movement transactions, and
+/// Algorithm Vision coordination for a dungeon run.
 class GameController extends ChangeNotifier {
   final DungeonLevel level;
+  final VisualizationController visualizationController;
+  final DijkstraEngine _dijkstraEngine;
+
   late PlayerState _playerState;
   final List<GridPosition> _movementHistory = [];
   String? _lastRejectionReason;
+  GameStatus? _previousStatusBeforeVision;
 
-  GameController({required this.level}) {
+  GameController({
+    required this.level,
+    VisualizationController? visualizationController,
+    DijkstraEngine? dijkstraEngine,
+  }) : visualizationController =
+           visualizationController ?? VisualizationController(),
+       _dijkstraEngine = dijkstraEngine ?? DijkstraEngine() {
     _initLevel();
   }
 
@@ -26,6 +39,7 @@ class GameController extends ChangeNotifier {
     _movementHistory.clear();
     _movementHistory.add(level.start);
     _lastRejectionReason = null;
+    _previousStatusBeforeVision = null;
   }
 
   // --- Getters ---
@@ -46,6 +60,8 @@ class GameController extends ChangeNotifier {
   bool get isPaused => _playerState.status == GameStatus.paused;
   bool get isPlaying => _playerState.status == GameStatus.playing;
   bool get isReady => _playerState.status == GameStatus.ready;
+  bool get isShowingAlgorithm =>
+      _playerState.status == GameStatus.showingAlgorithm;
 
   String? get lastRejectionReason => _lastRejectionReason;
   List<GridPosition> get movementHistory => List.unmodifiable(_movementHistory);
@@ -78,6 +94,12 @@ class GameController extends ChangeNotifier {
     }
     if (_playerState.status == GameStatus.paused) {
       _reject('Game is paused. Tap Resume to continue.');
+      return false;
+    }
+    if (_playerState.status == GameStatus.showingAlgorithm) {
+      _reject(
+        'Cannot move while Algorithm Vision is active. Close visualization to resume.',
+      );
       return false;
     }
 
@@ -162,9 +184,60 @@ class GameController extends ChangeNotifier {
     return true;
   }
 
-  /// Pauses the game if currently playing.
+  /// Activates Algorithm Vision, capturing the player's current position as the source
+  /// and running Dijkstra's algorithm to the exit with full event recording.
+  ///
+  /// Strictly isolates game state: does NOT move player, alter energy, score, moves,
+  /// or collect items.
+  void startAlgorithmVision() {
+    if (_playerState.status == GameStatus.won ||
+        _playerState.status == GameStatus.lost) {
+      return;
+    }
+
+    _previousStatusBeforeVision = _playerState.status;
+    _playerState = _playerState.copyWith(status: GameStatus.showingAlgorithm);
+
+    final source = _playerState.position;
+    final target = level.exit;
+
+    final result = _dijkstraEngine.findShortestPath(
+      level: level,
+      start: source,
+      goal: target,
+      recordEvents: true,
+    );
+
+    visualizationController.initialize(
+      source: source,
+      target: target,
+      result: result,
+    );
+    _lastRejectionReason = null;
+    notifyListeners();
+  }
+
+  /// Closes Algorithm Vision, clears overlays and timers, and restores player status
+  /// to permit manual movement.
+  void closeAlgorithmVision() {
+    if (_playerState.status == GameStatus.showingAlgorithm) {
+      visualizationController.clear();
+      _playerState = _playerState.copyWith(
+        status: _previousStatusBeforeVision ?? GameStatus.playing,
+      );
+      _previousStatusBeforeVision = null;
+      _lastRejectionReason = null;
+      notifyListeners();
+    }
+  }
+
+  /// Pauses the game if currently playing or showing algorithm.
   void pause() {
-    if (_playerState.status == GameStatus.playing) {
+    if (_playerState.status == GameStatus.playing ||
+        _playerState.status == GameStatus.showingAlgorithm) {
+      if (visualizationController.isPlaying) {
+        visualizationController.pause();
+      }
       _playerState = _playerState.copyWith(status: GameStatus.paused);
       _lastRejectionReason = null;
       notifyListeners();
@@ -174,15 +247,19 @@ class GameController extends ChangeNotifier {
   /// Resumes the game if currently paused.
   void resume() {
     if (_playerState.status == GameStatus.paused) {
-      _playerState = _playerState.copyWith(status: GameStatus.playing);
+      _playerState = _playerState.copyWith(
+        status: _previousStatusBeforeVision ?? GameStatus.playing,
+      );
       _lastRejectionReason = null;
       notifyListeners();
     }
   }
 
   /// Restores the exact initial gameplay state, resetting player position,
-  /// energy reserves, score, collected items, and movement history.
+  /// energy reserves, score, collected items, and movement history,
+  /// and completely clearing any active algorithm visualization.
   void restartLevel() {
+    visualizationController.clear();
     _initLevel();
     notifyListeners();
   }
@@ -190,5 +267,11 @@ class GameController extends ChangeNotifier {
   void _reject(String reason) {
     _lastRejectionReason = reason;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    visualizationController.dispose();
+    super.dispose();
   }
 }
