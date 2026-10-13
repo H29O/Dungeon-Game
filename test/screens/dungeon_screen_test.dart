@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:algorithmic_dungeon/data/sample_levels.dart';
+import 'package:algorithmic_dungeon/game/direction.dart';
 import 'package:algorithmic_dungeon/game/game_controller.dart';
 import 'package:algorithmic_dungeon/screens/dungeon_screen.dart';
+import 'package:algorithmic_dungeon/screens/results_screen.dart';
 import 'package:algorithmic_dungeon/widgets/dungeon_board.dart';
 import 'package:algorithmic_dungeon/widgets/movement_controls.dart';
 
@@ -121,6 +123,54 @@ void main() {
       await tester.pump();
 
       expect(find.text('Game Paused'), findsNothing);
+    });
+
+    testWidgets('completing labyrinth triggers navigation to ResultsScreen', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final controller = GameController(level: SampleLevels.level1);
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: DungeonScreen(controller: controller)),
+      );
+
+      // Walk to exit: 4 down, 5 right, 1 down
+      for (int i = 0; i < 4; i++) {
+        controller.move(Direction.down);
+      }
+      for (int i = 0; i < 5; i++) {
+        controller.move(Direction.right);
+      }
+      controller.move(Direction.down);
+
+      await tester.pumpAndSettle();
+
+      // ResultsScreen is automatically presented
+      expect(find.byType(ResultsScreen), findsOneWidget);
+      expect(find.text('Labyrinth Escaped!'), findsOneWidget);
+      expect(
+        find.text('Route Efficiency: 100.0% (Optimal! 🏆)'),
+        findsOneWidget,
+      );
+
+      // Pop back to DungeonScreen
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+      await tester.pumpAndSettle();
+
+      // Results button on victory banner can reopen it
+      expect(find.text('Labyrinth Escaped! Victory!'), findsOneWidget);
+      final resultsButton = find.widgetWithText(TextButton, 'Results');
+      expect(resultsButton, findsOneWidget);
+
+      await tester.tap(resultsButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ResultsScreen), findsOneWidget);
     });
   });
 }

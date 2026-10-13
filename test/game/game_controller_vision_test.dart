@@ -160,5 +160,57 @@ void main() {
       expect(state.result.hasPath, isFalse);
       expect(state.result.totalCost, isNull);
     });
+
+    test('startAlgorithmVision increments hintUsageCount exactly once per activation', () {
+      expect(controller.hintUsageCount, equals(0));
+
+      controller.startAlgorithmVision();
+      expect(controller.hintUsageCount, equals(1));
+
+      controller.closeAlgorithmVision();
+      expect(controller.hintUsageCount, equals(1));
+
+      controller.startAlgorithmVision();
+      expect(controller.hintUsageCount, equals(2));
+
+      controller.restartLevel();
+      expect(controller.hintUsageCount, equals(0));
+    });
+
+    test(
+      'optimalRouteCost returns 10 and routeEfficiency computes accurately',
+      () {
+        expect(controller.optimalRouteCost, equals(10));
+        expect(controller.routeEfficiency, equals(100.0));
+
+        // After 4 down, 5 right, 1 down (cost 10):
+        for (int i = 0; i < 4; i++) {
+          controller.move(Direction.down);
+        }
+        for (int i = 0; i < 5; i++) {
+          controller.move(Direction.right);
+        }
+        controller.move(Direction.down);
+
+        expect(controller.isWon, isTrue);
+        expect(controller.cumulativeRouteCost, equals(10));
+        expect(controller.optimalRouteCost, equals(10));
+        expect(controller.routeEfficiency, equals(100.0));
+      },
+    );
+
+    test('collectedTreasuresCount increments when treasure is collected', () {
+      expect(controller.collectedTreasuresCount, equals(0));
+
+      // Move toward treasure at (0, 4) on level1:
+      // (0,0) -> R -> R -> R -> R
+      controller.move(Direction.right); // (0, 1)
+      controller.move(Direction.right); // (0, 2) rubble
+      controller.move(Direction.right); // (0, 3) floor
+      controller.move(Direction.right); // (0, 4) treasure!
+
+      expect(controller.collectedTreasuresCount, equals(1));
+      expect(controller.score, equals(100));
+    });
   });
 }

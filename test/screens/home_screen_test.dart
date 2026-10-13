@@ -17,7 +17,17 @@ void main() {
       expect(find.text('Algorithmic Dungeon'), findsAtLeastNWidgets(1));
       expect(find.text('How to Play'), findsOneWidget);
       expect(find.text('Start Game'), findsOneWidget);
+      expect(find.text('Algorithm Vision Demo'), findsOneWidget);
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.visibility_rounded), findsOneWidget);
+      expect(
+        find.text('Design & Analysis of Algorithms • FA2 Project'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Pimpri Chinchwad College of Engineering'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping Start Game navigates to DungeonScreen', (
@@ -38,5 +48,26 @@ void main() {
       expect(find.byType(DungeonScreen), findsOneWidget);
       expect(find.text('The Labyrinth Threshold'), findsOneWidget);
     });
+
+    testWidgets(
+      'tapping Algorithm Vision Demo navigates to DungeonScreen with vision active',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(600, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+
+        await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+
+        final visionDemoButton = find.text('Algorithm Vision Demo');
+        expect(visionDemoButton, findsOneWidget);
+
+        await tester.tap(visionDemoButton);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(DungeonScreen), findsOneWidget);
+        expect(find.text('Optimal Cost: 10'), findsOneWidget);
+        expect(find.text('Close Vision'), findsOneWidget);
+      },
+    );
   });
 }

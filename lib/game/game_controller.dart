@@ -55,6 +55,46 @@ class GameController extends ChangeNotifier {
   Set<String> get collectedItemIds => _playerState.collectedItemIds;
   int get hintUsageCount => _playerState.hintUsageCount;
 
+  int? _cachedOptimalCost;
+
+  /// Returns the optimal Dijkstra route cost from level.start to level.exit.
+  /// Computed deterministically via DijkstraEngine without mutating gameplay state.
+  int get optimalRouteCost {
+    _cachedOptimalCost ??= _dijkstraEngine
+        .findShortestPath(level: level, start: level.start, goal: level.exit)
+        .totalCost;
+    return _cachedOptimalCost!;
+  }
+
+  /// Returns the route efficiency percentage (0.0 to 100.0) for this run.
+  /// If player took the optimal path, efficiency is 100.0%.
+  /// If player took extra detours or rubble tiles, efficiency is lower.
+  double get routeEfficiency {
+    if (cumulativeRouteCost <= 0) return 100.0;
+    return (optimalRouteCost / cumulativeRouteCost * 100).clamp(0.0, 100.0);
+  }
+
+  /// Returns the number of treasure collectibles collected during this dungeon run.
+  int get collectedTreasuresCount {
+    int count = 0;
+    for (final id in _playerState.collectedItemIds) {
+      final parts = id.split('_');
+      if (parts.length == 3) {
+        final row = int.tryParse(parts[1]);
+        final col = int.tryParse(parts[2]);
+        if (row != null &&
+            col != null &&
+            level.isInBounds(GridPosition(row, col))) {
+          if (level.tileAt(GridPosition(row, col)).collectible ==
+              CollectibleType.treasure) {
+            count++;
+          }
+        }
+      }
+    }
+    return count;
+  }
+
   bool get isWon => _playerState.status == GameStatus.won;
   bool get isLost => _playerState.status == GameStatus.lost;
   bool get isPaused => _playerState.status == GameStatus.paused;
@@ -196,7 +236,10 @@ class GameController extends ChangeNotifier {
     }
 
     _previousStatusBeforeVision = _playerState.status;
-    _playerState = _playerState.copyWith(status: GameStatus.showingAlgorithm);
+    _playerState = _playerState.copyWith(
+      status: GameStatus.showingAlgorithm,
+      hintUsageCount: _playerState.hintUsageCount + 1,
+    );
 
     final source = _playerState.position;
     final target = level.exit;

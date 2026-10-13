@@ -5,13 +5,19 @@ import '../game/game_controller.dart';
 import '../widgets/algorithm_vision_panel.dart';
 import '../widgets/dungeon_board.dart';
 import '../widgets/movement_controls.dart';
+import 'results_screen.dart';
 
 /// Complete, playable dungeon exploration screen with integrated
 /// Algorithm Vision for Dijkstra shortest-path observation.
 class DungeonScreen extends StatefulWidget {
   final GameController? controller;
+  final bool startWithVision;
 
-  const DungeonScreen({super.key, this.controller});
+  const DungeonScreen({
+    super.key,
+    this.controller,
+    this.startWithVision = false,
+  });
 
   @override
   State<DungeonScreen> createState() => _DungeonScreenState();
@@ -20,6 +26,7 @@ class DungeonScreen extends StatefulWidget {
 class _DungeonScreenState extends State<DungeonScreen> {
   late final GameController _controller;
   bool _ownsController = false;
+  bool _hasNavigatedToResults = false;
 
   @override
   void initState() {
@@ -30,10 +37,51 @@ class _DungeonScreenState extends State<DungeonScreen> {
       _controller = GameController(level: SampleLevels.level1);
       _ownsController = true;
     }
+
+    _controller.addListener(_handleGameStateChange);
+
+    if (widget.startWithVision) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_controller.isShowingAlgorithm) {
+          _controller.startAlgorithmVision();
+        }
+      });
+    }
+  }
+
+  void _handleGameStateChange() {
+    if (!mounted) return;
+    if ((_controller.isWon || _controller.isLost) && !_hasNavigatedToResults) {
+      _hasNavigatedToResults = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _navigateToResults();
+      });
+    } else if (!_controller.isWon && !_controller.isLost) {
+      _hasNavigatedToResults = false;
+    }
+  }
+
+  void _navigateToResults() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ResultsScreen(
+          controller: _controller,
+          onReplay: () {
+            Navigator.of(context).pop();
+            _controller.restartLevel();
+          },
+          onMainMenu: () {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          },
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_handleGameStateChange);
     if (_ownsController) {
       _controller.dispose();
     }
@@ -264,6 +312,10 @@ class _DungeonScreenState extends State<DungeonScreen> {
             ),
           ),
           TextButton(
+            onPressed: _navigateToResults,
+            child: const Text('Results'),
+          ),
+          TextButton(
             onPressed: () => _controller.restartLevel(),
             child: const Text('Replay'),
           ),
@@ -293,6 +345,10 @@ class _DungeonScreenState extends State<DungeonScreen> {
                 color: Color(0xFFD9534F),
               ),
             ),
+          ),
+          TextButton(
+            onPressed: _navigateToResults,
+            child: const Text('Results'),
           ),
           TextButton(
             onPressed: () => _controller.restartLevel(),

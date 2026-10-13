@@ -111,7 +111,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   // Prominent Play Button
                   SizedBox(
                     width: double.infinity,
@@ -140,6 +140,77 @@ class HomeScreen extends StatelessWidget {
                           ),
                         );
                       },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Algorithm Vision Entry Point
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color(0xFF3867D6),
+                          width: 1.5,
+                        ),
+                        foregroundColor: const Color(0xFF3867D6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.visibility_rounded, size: 20),
+                      label: const Text(
+                        'Algorithm Vision Demo',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const DungeonScreen(startWithVision: true),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Academic Credits Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Column(
+                      children: [
+                        Text(
+                          'Design & Analysis of Algorithms • FA2 Project',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF172033),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Pimpri Chinchwad College of Engineering (PCCOE), Pune\nDepartment of Information Technology',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF596579),
+                            height: 1.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                 ],
