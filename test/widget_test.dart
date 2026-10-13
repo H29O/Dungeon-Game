@@ -12,5 +12,6 @@ void main() {
       find.text('Escape the Labyrinth • DAA Academic Project'),
       findsOneWidget,
     );
+    expect(find.text('Start Game'), findsOneWidget);
   });
 }
