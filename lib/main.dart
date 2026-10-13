@@ -31,9 +31,7 @@ class AlgorithmicDungeonApp extends StatelessWidget {
             color: Color(0xFF172033),
             fontWeight: FontWeight.bold,
           ),
-          bodyMedium: TextStyle(
-            color: Color(0xFF596579),
-          ),
+          bodyMedium: TextStyle(color: Color(0xFF596579)),
         ),
       ),
       home: const StarterScreen(),
